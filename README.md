@@ -1,4 +1,4 @@
-SCopier — local build 20261015-stable109
+SCopier: local build 20261015-stable109
 Made by Srijan Chatterjee
 ©2026 All rights reserved
 
