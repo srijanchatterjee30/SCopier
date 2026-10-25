@@ -64,7 +64,7 @@ History and Trash initially render ten entries, then add further batches as you 
 
 Menus open from a circular trigger into a rounded enclosure. Their own text begins blurred, bends and inverts near the moving edge, and resolves as the menu opens. Background frosting remains separate from the text animation. Closing begins with clear text and introduces distortion as the shape contracts.
 
-Pressed selection pills retain curved-edge lettering, colour dispersion and independent track bending. The scale thumb stretches independently of its surrounding menu. Switches expand, travel while enlarged, then settle at the destination; their interiors use clearer sampling. Ordinary Advanced copy toggles avoid rebuilding the card list.
+Pressed selection pills retain curved-edge lettering, colour dispersion and independent track bending. The scale thumb stretches independently of its surrounding menu. Switches expand while travelling, reach their largest size near the destination, then settle in one overlapping motion; their interiors use clearer sampling. Ordinary Advanced copy toggles avoid rebuilding the card list.
 
 Notifications rise from below, widen and settle, with refractive surfaces and swipe-to-dismiss behaviour. Undo or Restore appears when the action supports it. The timer uses a glass surface consistent with the copy controls.
 
@@ -72,11 +72,11 @@ Notifications rise from below, widen and settle, with refractive surfaces and sw
 
 The searchable guide includes Functionality, Design and Contact sections, with interactive demonstrations and direct links to individual topics.
 
-- Scrolling upward reveals the top navigation. Clicking its active section returns to the top using a fixed-duration scroll, rather than taking longer on a longer page.
+- Scrolling upward reveals the top navigation. Clicking its active section retains the fixed-duration return to top. Choosing another section starts a faster upward scroll alongside the pill movement, then changes the content when the pill reaches its destination.
 - Appearance, motion and transparency demonstrations place prominent blue action buttons above their previews. Clicking a preview points users toward the relevant button.
 - Demonstrations reflect the responsive copy toolbar, circular controls, notifications and current menu design.
-- **#29 — Menu morphodynamics:** inspect opening and closing with playback controls, speed adjustment and a draggable timeline. Pull past an endpoint, or click its stop, to switch playback direction.
-- **#30 — Live surface refraction:** enter your own text and drag the glass over it. Centred sliders below the preview adjust Refraction and Blur. Blur ranges from 0–12 px and adds a subtle background-colour tint. Arrow keys move the glass; Home centres it.
+- **#29 — Menu morphodynamics:** inspect opening and closing with playback controls, speed adjustment and a draggable timeline. The active endpoint joins the bar while the opposite point stays detached. Pull the pill to the detached point, or click that point, to switch direction repeatedly without releasing the drag.
+- **#30 — Live surface refraction:** enter your own text and drag the glass over it. Centred sliders below the preview adjust Refraction and Blur. Blur ranges from 0–30 px, applies a uniform Gaussian blur to sampled content and adds a subtle background-colour tint. Arrow keys move the glass; Home centres it.
 
 The guide supports light and dark themes. Expanded optical surfaces refresh their colours when the theme changes.
 
@@ -100,11 +100,34 @@ Recent Safari work removes unintended grey fills around sampled text, avoids cop
 
 The two rendering paths can differ, particularly around complex background content. Automated checks and native WebKit captures cover specific interactions; they do not guarantee identical rendering or frame rates on every browser and device.
 
-## Smart actions and offline recognition
+## Smart actions and location recognition
 
-Card menus recognise links, phone numbers, places, dates and durations. Copying a recognised value is separate from opening its destination. Locations open Apple Maps on Apple devices and Google Maps elsewhere; dates provide calendar actions, and durations can start timers.
+Card menus recognise links, phone numbers, places, dates, durations, latitude/longitude pairs and IPv4/IPv6 addresses. Copying a recognised value is separate from opening its destination. Locations open Apple Maps on Apple devices and Google Maps elsewhere; dates provide calendar actions, and durations can start timers.
 
-Recognition runs locally. Opening a website, map, calling app or calendar hands the chosen value to that service or application. Place recognition is a text match, not address verification; ambiguous names may need a city, country or explicit location label.
+Automatic recognition runs locally using GeoNames, Compromise and coordinate/IP parsers. Coordinates support decimal pairs, hemisphere notation, latitude/longitude labels and degrees/minutes/seconds. Opening a website, map, calling app or calendar hands the chosen value to that service or application. Natural-language candidates are not verified addresses; ambiguous names may need a city or country. English NLP is best-effort and does not recognise every location or language.
+
+### Optional online lookups and local spaCy
+
+The card menu offers **Find locations in text…**. Review the text and choose **Analyze text** to combine browser candidates with optional spaCy analysis on the local SCopier server. This analysis does not geocode or send the full text to a public provider. Use **Search this place** and then **Search** to geocode an individual candidate.
+
+Recognised locations also offer **Find on OpenStreetMap**; public IPs offer **Locate IP**. Opening either dialog makes no network request. Search sends only the reviewed place or coordinates to Nominatim; IP lookup sends only the reviewed public IP to ip-api.com. Private/local/reserved IPs are rejected. IP locations are approximate network locations, not a person’s position. Do not submit confidential queries to public providers.
+
+Start the optional service from the source checkout:
+
+```sh
+python3.11 -m venv .venv-geo311
+.venv-geo311/bin/pip install -r requirements-geo.txt
+.venv-geo311/bin/python -m spacy download en_core_web_sm
+.venv-geo311/bin/python scripts/serve.py --recognition --spacy-model en_core_web_sm
+```
+
+Open **http://127.0.0.1:4174**. The standalone `file://` app retains browser recognition, but online lookups require this same-origin server. Browser storage differs between file and localhost origins; use a backup to move cards. Omitting `--spacy-model` keeps the browser recognizer and online lookups; omitting `--recognition` disables the API entirely.
+
+Nominatim requests are user-triggered, queued below one request per second across processes sharing the cache, cached for 30 days, identified as SCopier and attributed to OpenStreetMap contributors. There is no geocoding autocomplete. Set `SCOPIER_NOMINATIM_URL` to another compatible HTTPS endpoint to change providers. The public service has no availability guarantee and is intended for modest use: [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/).
+
+The free [ip-api endpoint](https://ip-api.com/docs/api:json) is enabled for this personal/non-commercial build. Its HTTP-only upstream runs through the local server; the selected IP is transmitted without HTTPS encryption. Requests are cached for one day, limited below 45 per minute and honor provider cooldown headers. Do not use this free provider commercially.
+
+Local spaCy uses the English `en_core_web_sm` pipeline with GPE, LOC and FAC entities. Compromise 14.19.0 is bundled under the MIT licence; see `THIRD_PARTY_COMPROMISE_LICENSE.txt`. Neither library requires a hosted NLP API key. The server binds only to loopback, accepts same-origin JSON POSTs and keeps its SQLite lookup cache in `.cache/location-api.sqlite3` outside the published files. Delete that file while the server is stopped to clear cached lookup results. Never publish the cache, Python environment or source directory.
 
 ### GeoNames attribution
 
@@ -141,4 +164,4 @@ Editable app files live in `work/scopier/dist`. The build compiles `style.css` i
 
 `scripts/build-place-data.py` rebuilds the recognition index from `/tmp/scopier-cities1000.zip` and `/tmp/scopier-countryInfo.txt`.
 
-Latest local validation: 194 JavaScript tests and 12 Python tests passed. Additional Chromium and native WebKit checks exercised menus, toggle sequencing, theme refresh, sampled background colours, continuous dragging and local scroll alignment. Negative elastic-scroll offsets were simulated; physical Safari rubber-band behaviour still warrants checking on the target device.
+Latest local validation: 202 JavaScript tests and 19 Python tests passed. Additional Chromium and native WebKit checks exercised menus, toggle sequencing, theme refresh, sampled background colours, continuous dragging and local scroll alignment. Negative elastic-scroll offsets were simulated; physical Safari rubber-band behaviour still warrants checking on the target device.
