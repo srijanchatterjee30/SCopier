@@ -4,7 +4,7 @@ A local clipboard workspace for keeping text in cards, combining selections, and
 
 Made by Srijan Chatterjee. ©2026 All rights reserved.
 
-Documentation updated **25 October 2026**, covering Version 2 and the changes made after `20261015-stable109`.
+Documentation updated **17 November 2026**, covering Version 2 and the changes made after `20261015-stable109`.
 
 ## Getting started
 
@@ -104,30 +104,25 @@ The two rendering paths can differ, particularly around complex background conte
 
 Card menus recognise links, phone numbers, places, dates, durations, latitude/longitude pairs and IPv4/IPv6 addresses. Copying a recognised value is separate from opening its destination. Locations open Apple Maps on Apple devices and Google Maps elsewhere; dates provide calendar actions, and durations can start timers.
 
-Automatic recognition runs locally using GeoNames, Compromise and coordinate/IP parsers. Coordinates support decimal pairs, hemisphere notation, latitude/longitude labels and degrees/minutes/seconds. Opening a website, map, calling app or calendar hands the chosen value to that service or application. Natural-language candidates are not verified addresses; ambiguous names may need a city or country. English NLP is best-effort and does not recognise every location or language.
+Recognition is automatic and entirely offline. A compact, data-backed recogniser uses the bundled place list, postal-code membership and context rules. It is not a neural model and does not require a paid API, background request, server, localhost service, NLP installation or extra search dialog.
 
-### Optional online lookups and local spaCy
+- A locality and its country/region, such as **Kolkata, India**, become one location with the existing Copy location and Maps actions.
+- Lists of cities or countries remain separate destinations. Labelled addresses and numbered streets retain their locality and postal-code suffix.
+- Known PIN/postal codes are recognised locally, including a standalone Indian PIN or a code labelled PIN, ZIP or postal code. Order, invoice, OTP and phone contexts are excluded. Numeric codes in unrelated prose are not automatically promoted to locations.
+- Decimal, hemisphere and degrees/minutes/seconds coordinates are validated locally. IPv4/IPv6 values offer **Copy IP address** only; IP geolocation is not performed.
+- Notes without a recognised entity get no additional location menu actions. Copying and other existing smart actions keep their usual behaviour.
 
-The card menu offers **Find locations in text…**. Review the text and choose **Analyze text** to combine browser candidates with optional spaCy analysis on the local SCopier server. This analysis does not geocode or send the full text to a public provider. Use **Search this place** and then **Search** to geocode an individual candidate.
+There are no OpenStreetMap lookup buttons, “Find locations in text”, analysis dialogs or optional spaCy services. Maps opens only when the user chooses the existing Maps action; viewing a map uses that external app/site. Recognition itself remains offline.
 
-Recognised locations also offer **Find on OpenStreetMap**; public IPs offer **Locate IP**. Opening either dialog makes no network request. Search sends only the reviewed place or coordinates to Nominatim; IP lookup sends only the reviewed public IP to ip-api.com. Private/local/reserved IPs are rejected. IP locations are approximate network locations, not a person’s position. Do not submit confidential queries to public providers.
+Context rules are conservative, not an understanding of every sentence. Ambiguous names and numeric postal codes can still need a locality, country or address label.
 
-Start the optional service from the source checkout:
+### Postal-code data
 
-```sh
-python3.11 -m venv .venv-geo311
-.venv-geo311/bin/pip install -r requirements-geo.txt
-.venv-geo311/bin/python -m spacy download en_core_web_sm
-.venv-geo311/bin/python scripts/serve.py --recognition --spacy-model en_core_web_sm
-```
+The bundled exact-membership index contains **4,284,045 unique country/code pairs across 124 countries**, built from **5,045,914 source rows** downloaded on 17 November 2026. It combines GeoNames `allCountries.zip` with the full UK, Canadian and Dutch extracts. The app stores compact numeric ranges and postal-sector bitmaps rather than millions of address objects. These data add about 5.3 MiB to the offline bundle; no postal index is built on every keystroke.
 
-Open **http://127.0.0.1:4174**. The standalone `file://` app retains browser recognition, but online lookups require this same-origin server. Browser storage differs between file and localhost origins; use a backup to move cards. Omitting `--spacy-model` keeps the browser recognizer and online lookups; omitting `--recognition` disables the API entirely.
+The dataset does not contain every code in every country. Some source countries provide partial codes, and source data can be missing or outdated; membership is not delivery/address verification. See the [GeoNames postal dataset and coverage notes](https://download.geonames.org/export/zip/readme.txt). The full UK extract contains Royal Mail copyright and database right 2022. GeoNames postal data is licensed under CC BY 4.0.
 
-Nominatim requests are user-triggered, queued below one request per second across processes sharing the cache, cached for 30 days, identified as SCopier and attributed to OpenStreetMap contributors. There is no geocoding autocomplete. Set `SCOPIER_NOMINATIM_URL` to another compatible HTTPS endpoint to change providers. The public service has no availability guarantee and is intended for modest use: [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/).
-
-The free [ip-api endpoint](https://ip-api.com/docs/api:json) is enabled for this personal/non-commercial build. Its HTTP-only upstream runs through the local server; the selected IP is transmitted without HTTPS encryption. Requests are cached for one day, limited below 45 per minute and honor provider cooldown headers. Do not use this free provider commercially.
-
-Local spaCy uses the English `en_core_web_sm` pipeline with GPE, LOC and FAC entities. Compromise 14.19.0 is bundled under the MIT licence; see `THIRD_PARTY_COMPROMISE_LICENSE.txt`. Neither library requires a hosted NLP API key. The server binds only to loopback, accepts same-origin JSON POSTs and keeps its SQLite lookup cache in `.cache/location-api.sqlite3` outside the published files. Delete that file while the server is stopped to clear cached lookup results. Never publish the cache, Python environment or source directory.
+To rebuild from downloaded source archives in `work/scopier/data`, run `python3 scripts/build-postal-data.py`. The app itself needs only the generated bundled data, never Python or a server.
 
 ### GeoNames attribution
 
@@ -140,6 +135,14 @@ Data was filtered and normalised for case and accents. Search-only metadata, coo
 - Licence: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/)
 
 GeoNames does not endorse SCopier.
+
+### Detailed India and Germany coverage
+
+The offline recogniser also includes the full GeoNames India and Germany extracts downloaded on 17 November 2026: **660,065 India records** and **222,326 Germany records**. These include recorded villages, neighbourhoods, administrative areas, buildings, landmarks, roads, water features and terrain rather than only large cities. Primary names, ASCII spellings, alternate names and postal locality names supply **830,901 distinct local names**, with **811,155 additional names** beyond the original global city index. Names are stored in compact prefix buckets and searched without constructing a million-entry JavaScript map.
+
+German PLZ/Postleitzahl labels and street-name-before-house-number addresses are supported, along with local-name and location-context handling. The datasets are not a list of every building, business or road, and do not contain billions of places. Real-world coverage is limited by the source; the app does not invent missing places. See the [GeoNames country-extract format and coverage](https://download.geonames.org/export/dump/readme.txt).
+
+Run `python3 scripts/build-local-places.py` after the base city build to regenerate this extension from the local country and postal archives in `work/scopier/data`. The full app remains offline; the larger datasets increase the standalone HTML size.
 
 ## Backups and security
 
@@ -164,4 +167,4 @@ Editable app files live in `work/scopier/dist`. The build compiles `style.css` i
 
 `scripts/build-place-data.py` rebuilds the recognition index from `/tmp/scopier-cities1000.zip` and `/tmp/scopier-countryInfo.txt`.
 
-Latest local validation: 202 JavaScript tests and 19 Python tests passed. Additional Chromium and native WebKit checks exercised menus, toggle sequencing, theme refresh, sampled background colours, continuous dragging and local scroll alignment. Negative elastic-scroll offsets were simulated; physical Safari rubber-band behaviour still warrants checking on the target device.
+Latest local validation: 205 JavaScript tests and 12 Python tests passed. Additional Chromium and native WebKit checks exercised menus, toggle sequencing, theme refresh, sampled background colours, continuous dragging and local scroll alignment. Negative elastic-scroll offsets were simulated; physical Safari rubber-band behaviour still warrants checking on the target device.
